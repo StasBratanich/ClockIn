@@ -1,4 +1,4 @@
-import './App.css'
+import "./App.css";
 
 function App() {
   return (
@@ -6,7 +6,7 @@ function App() {
       <h1>ClockIn</h1>
       <p>Attendance functionality is under development.</p>
     </main>
-  )
+  );
 }
 
-export default App
+export default App;
