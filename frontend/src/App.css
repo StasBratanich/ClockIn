@@ -1,7 +1,143 @@
-main {
-  text-align: center;
+.attendance {
+  max-width: 46rem;
+  margin-inline: auto;
+  padding: clamp(1rem, 4vw, 3rem);
 }
 
-h1 {
+.page-heading {
+  margin-bottom: 1.5rem;
+}
+
+.page-heading h1 {
+  font-size: clamp(2rem, 6vw, 3rem);
+  letter-spacing: -0.05em;
+  line-height: 1.1;
+}
+
+.page-heading p,
+.muted {
+  color: #475569;
+}
+
+.attendance-panel {
+  margin-block-end: 1rem;
+  padding: clamp(1rem, 4vw, 1.5rem);
+  background: #fff;
+  border: 1px solid #d9e2eb;
+  border-radius: 1rem;
+}
+
+.attendance-panel label {
+  display: block;
   margin-bottom: 0.5rem;
+  font-weight: 650;
+}
+
+.attendance-panel select {
+  width: 100%;
+  max-width: 28rem;
+  padding: 0.65rem;
+  background: #fff;
+  color: inherit;
+  border: 1px solid #64748b;
+  border-radius: 0.5rem;
+}
+
+.section-heading,
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.section-heading {
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.section-heading h2,
+.shift-state h3,
+.missing-shifts h3 {
+  line-height: 1.25;
+}
+
+.shift-state,
+.missing-shifts {
+  padding-top: 1rem;
+  border-top: 1px solid #d9e2eb;
+}
+
+.missing-shifts {
+  margin-top: 1.25rem;
+}
+
+.missing-shifts ul {
+  margin-bottom: 0;
+  padding-left: 1.25rem;
+}
+
+.missing-shifts li + li {
+  margin-top: 0.5rem;
+}
+
+.actions,
+.notice {
+  margin-top: 0.75rem;
+}
+
+.notice {
+  margin-bottom: 0.75rem;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+}
+
+.notice p {
+  margin-top: 0;
+  margin-bottom: 0.75rem;
+}
+
+.notice.success {
+  background: #e7f6ed;
+  color: #155238;
+}
+
+.notice.warning {
+  background: #fff4d8;
+  color: #714504;
+}
+
+.notice.error {
+  background: #fdecee;
+  color: #842234;
+}
+
+.attendance button {
+  padding: 0.6rem 0.85rem;
+  border: 1px solid #195634;
+  border-radius: 0.5rem;
+  background: #195634;
+  color: #fff;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.attendance button.secondary {
+  border-color: #64748b;
+  background: #fff;
+  color: #24364b;
+}
+
+.attendance button:enabled:hover {
+  filter: brightness(0.92);
+}
+
+.attendance :is(button, select):disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.attendance :focus-visible {
+  outline: 2px solid #075eae;
+  outline-offset: 3px;
 }

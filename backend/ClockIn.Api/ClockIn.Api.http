@@ -1,6 +1,25 @@
 @ClockIn.Api_HostAddress = http://localhost:5146
+@employeeId = 1
 
-GET {{ClockIn.Api_HostAddress}}/weatherforecast/
+GET {{ClockIn.Api_HostAddress}}/api/employees
 Accept: application/json
 
 ###
+
+GET {{ClockIn.Api_HostAddress}}/api/employees/{{employeeId}}/attendance
+Accept: application/json
+
+###
+
+POST {{ClockIn.Api_HostAddress}}/api/employees/{{employeeId}}/attendance/clock-in
+Accept: application/json
+
+###
+
+POST {{ClockIn.Api_HostAddress}}/api/employees/{{employeeId}}/attendance/clock-out
+Accept: application/json
+
+###
+
+POST {{ClockIn.Api_HostAddress}}/api/employees/{{employeeId}}/attendance/missing-clock-out
+Accept: application/json
