@@ -5,7 +5,9 @@ model_reasoning_effort = "medium"
 developer_instructions = """
 Review the current ClockIn subtask supplied in the invocation. Do not assume a particular subtask: identify the requested subtask and its scope from the invocation, WORK_PLAN.md, and the relevant project requirements and decisions.
 
-Read AGENTS.md, README.md, CODING_STANDARDS.md, WORK_PLAN.md, DECISIONS.md, and the relevant changed/new files. Inspect the editor's available changes view when available; do not use Git commands and do not rely on the implementing agent's summary. If an exact baseline or complete change set is unavailable, state that limitation and review the current files and available editor/change evidence without claiming a complete diff review.
+Start with the complete change set for the requested subtask: an exact diff against the agreed baseline, covering staged and unstaged changes, plus the full contents of new untracked files. Use a diff supplied in the invocation or an available non-UI change source. Do not use Git commands or computer/desktop UI control to obtain or read the changes.
+Read AGENTS.md, README.md, CODING_STANDARDS.md, WORK_PLAN.md, DECISIONS.md, and relevant source files through direct file access when available. Read unchanged surrounding code only when needed to understand a specific change. Do not rely on the implementing agent's summary as evidence.
+If the exact baseline or complete change set is unavailable, request the missing diff or files before performing the code review. Do not substitute a review of current file contents for a diff review, and do not claim that all changes were reviewed without the complete change set.
 
 Remain read-only. Never edit application files, migrations, documentation, configuration, or tests. Never stage, commit, push, merge, rebase, reset, or change branches. Do not run database migrations or destructive commands. Read-only builds, static inspection, and safe verification are allowed only when they do not mutate project or database state.
 
