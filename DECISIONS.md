@@ -20,7 +20,7 @@ The interface will let a user select an employee from a small list. The backend 
 
 An employee may have at most one active shift. Clock In opens one; Clock Out closes it. A shift may cross midnight and remains active until an explicit action changes its state. Repeating Clock In while a shift is active, or Clock Out when none is active, must not create or change attendance data and must return a clear response.
 
-The initial shift model distinguishes an active shift, a completed shift, and a shift marked as missing a clock-out. If someone forgot to clock out, they can explicitly choose “I forgot to clock out.” This marks the old shift as incomplete, leaves its clock-out time empty, and allows a new Clock In. It does **not** invent a departure time or calculate a completed duration for that shift. There is no automatic closure after a fixed number of hours; the UI should make an unusually long active shift conspicuous while still allowing a legitimate long shift to be clocked out. The exact warning threshold remains open.
+The initial shift model distinguishes an active shift, a completed shift, and a shift marked as missing a clock-out. If someone forgot to clock out, they can explicitly choose “I forgot to clock out.” This marks the old shift as incomplete, leaves its clock-out time empty, and allows a new Clock In. It does **not** invent a departure time or calculate a completed duration for that shift. The UI shows an informational warning once more than 12 hours have elapsed and keeps the existing shift actions available. Shifts stay open until an explicit action changes their state.
 
 For the first migration, `Shifts` has `Id` (`int IDENTITY`), `EmployeeId` (`int`, required FK), `ClockInAtUtc` (`datetimeoffset`, required), `ClockOutAtUtc` (`datetimeoffset`, nullable), and `Status` (`tinyint`, required). The backend represents `Status` with a `ShiftStatus : byte` enum: `1=Open`, `2=Completed`, `3=MissingClockOut`. A database check permits only these states and requires a missing exit time for `Open`/`MissingClockOut`, or an exit later than the entry for `Completed`. Attendance timestamps are stored at offset `+00:00`; a check constraint enforces that representation. The database cannot prove the source of a timestamp; the later backend service must obtain it from the external API.
 
@@ -68,13 +68,21 @@ Errors use ASP.NET Core ProblemDetails with a stable `code` extension.
 
 A 503 includes a numeric `failedAttemptReferenceId` extension only if the service saved the diagnostic. Error responses omit raw provider messages, connection strings, and exception details. Attendance rules remain in the service.
 
+### Attendance screen
+
+The responsive screen loads the employee list from the API and uses an explicit selection to load attendance. It shows the selected employee's open shift and shifts missing a clock-out. With no open shift the available action is Clock In. With an open shift the available actions are Clock Out and “I forgot to clock out,” which requires a separate confirmation. Missing clock-outs show the stored clock-in date and time. All punch times display with their local date and 24-hour time in `Europe/Zurich`.
+
+The browser clock determines whether more than 12 hours have elapsed since the stored clock-in instant. The warning is informational and can be affected by an inaccurate device clock. Punch timestamps always come from the API.
+
+The screen shows request progress, success, conflicts, and errors. A recognized time-provider failure displays its stable code and the failed-attempt reference when supplied. Retry sends a fresh punch request only when clicked. The frontend validates successful response bodies and gives each request 15 seconds, including reading its body. After successful actions, conflicts, or uncertain outcomes such as a timeout or an invalid punch response, the screen reads attendance once. A failed read leaves actions unavailable until the user can load attendance with Refresh attendance. A punch and its reconciliation read lock the controls against concurrent submission or selection changes. Attendance reads for a prior selection cannot replace the current selection's state. The API accepts the employee ID for closing actions, so a shift can still change on another client between the displayed read and a new action request.
+
+A timed-out punch can still finish on the server after the reconciliation read. The screen keeps the outcome marked as uncertain and leaves Refresh attendance available for another read.
+
+Successful Clock Out responses must contain a valid exit instant strictly later than entry. The frontend checks ordering at the API's full seven-digit fractional precision. When reloading employees, keyboard focus stays in the selection panel and moves to the enabled selector or the reload button when the request finishes.
+
 ## Outside the first deliverable and known limits
 
 - No manual creation or correction of attendance times, manager approval, payroll integration, notifications, or full audit trail. A missing clock-out and a failed attempt remain visible as unresolved exceptions; the MVP cannot determine their actual work times. We may reconsider one focused correction feature after the core flow is working, but it is not part of the current scope.
 - No authentication: any user of the app may select an employee. This is a deliberate home-assignment simplification and is unsuitable for trusted payroll records.
 - No automatic offline punch using a device or server clock. When the time API is unavailable, the user can retry, and the failed attempt may be logged separately; attendance is not fabricated.
 - No dedicated idempotency-key protocol initially. State checks and database constraints protect against duplicate active shifts and duplicate closures, but a lost HTTP response may still require the client to refresh the employee's state to learn whether a punch succeeded.
-
-## Open decisions for upcoming subtasks
-
-The unusually long shift warning threshold and exact UI behavior remain open for Subtask 5.

@@ -1,7 +1,7 @@
 # ClockIn — Working Plan
 
 Updated: 21 November 2026
-**Subtasks 1–4 complete, and Subtasks 5–6 planned.** This is the shared progress record.
+**Subtasks 1–5 complete, and Subtask 6 planned.** This is the shared progress record.
 
 ## Story — Clock employees in and out with reliable time
 
@@ -26,7 +26,7 @@ Build a small attendance flow in which a selected employee can clock in, clock o
 | 2   | BE - Read authoritative Zurich time               | External time client and validation                                   | Approved time-provider contract | Done        |
 | 3   | BE - Implement attendance operations              | EF Core reads/writes, state transitions, concurrency, failed attempts | 1, 2                            | Done        |
 | 4   | BE - Expose attendance API                        | Employee and attendance endpoints                                     | 3                               | Done        |
-| 5   | FE - Build employee attendance screen             | Selection, shift state, actions, feedback                             | 4                               | Planned     |
+| 5   | FE - Build employee attendance screen             | Selection, shift state, actions, feedback                             | 4                               | Done        |
 | 6   | Repo - Document and verify local run              | README and final decisions, fresh-start check                         | 1–5                             | Planned     |
 
 Each Subtask includes its own tests. No separate testing Subtask is planned.
@@ -170,7 +170,17 @@ The screen shows the selected employee's current shift and incomplete shifts, of
 - Check the main open/closed state actions, a forgotten clock-out, and the failure/retry message.
 - Run the existing frontend lint/build checks.
 
-Prerequisite: Agree on UI details and the long-shift warning threshold.
+### Progress record
+
+- Implemented the approved attendance screen against the Subtask 4 API and configured the Vite development proxy. The screen handles explicit missing-clock-out confirmation, provider failure and retry, pending actions, and read-back after uncertain outcomes.
+- Recorded the warning for shifts open for more than 12 elapsed hours and attendance interaction behavior in [DECISIONS.md](DECISIONS.md#attendance-screen). Documented the frontend startup commands and API proxy configuration in [README.md](README.md#run-the-frontend).
+- Ran `npm ci`, `npm test` (13 passed across two files), `npm run lint`, and `npm run build` successfully. The tests cover Zurich time and elapsed duration, employee selection, punch confirmation, retry, pending actions, and attendance read-back using controlled HTTP responses.
+- A Vite development smoke check served the page and forwarded the employee GET and a bodyless punch POST to a controlled HTTP endpoint. The live SQL Server and time-provider flow is part of Subtask 6.
+- Applied the first review's fixes for response validation, request deadlines, keyboard focus, the strictly greater-than-12-hours warning, and the Node.js test prerequisite. The frontend suite passed all 30 tests across three files, including a stalled punch and reconciliation that send one POST total. Lint and build passed.
+- Applied the second review's fixes for seven-digit Clock Out ordering, keyboard focus during employee reload, and the ten original platform `libc` selectors. `npm ci` preserved the restored lockfile. All 37 frontend tests passed across three files, and lint and build passed.
+- Kept Reload employees available for an empty list and restored focus to it after an empty reload when the selection panel still held focus. All 38 frontend tests passed across three files. Lint, build, and formatting checks passed.
+- Stabilized the reload focus tests with deferred responses and assertions on focus events and the active element after React settled. All 38 frontend tests passed across three files in each of 10 consecutive runs. Frontend lint, build, and formatting checks passed.
+- The independent reviewer found no actionable findings after the final fixes and did not rerun the frontend tests, lint, or build. The developer approved Subtask 5 after independent review; no commit or push is recorded here. Real-browser and live SQL Server/time-provider end-to-end verification remain part of Subtask 6.
 
 ## Subtask 6 — Repo - Document and verify local run
 
@@ -190,10 +200,6 @@ The root README explains prerequisites, Docker Compose startup, migration/applic
 ### Tests
 
 - Confirm the documented startup and a Clock In → Clock Out flow against SQL Server, plus the two exception paths.
-
-## Decisions still open for later subtasks
-
-- Attendance screen behavior and the warning threshold for unusually long open shifts.
 
 ## Progress and review protocol
 

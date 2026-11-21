@@ -9,12 +9,13 @@ Employee attendance system under development.
 
 The backend includes the attendance schema, Zurich time client, and HTTP endpoints for
 employee selection, attendance state, Clock In, Clock Out, and marking a missing clock-out.
-The attendance UI is planned.
+The frontend provides an employee attendance screen for those operations.
 
 ## Prerequisites
 
 - .NET 10 SDK
-- Node.js and npm
+- Node.js and npm. The frontend test suite uses jsdom and requires Node.js
+  `^22.22.2 || ^24.15.0 || >=26.0.0`. Verified with Node.js 26.13.1 and npm 10.8.3.
 - Docker Desktop with Docker Compose
 - .NET EF tool (`dotnet-ef`), installed with `dotnet tool install --global dotnet-ef --version 10.0.15`
 
@@ -90,9 +91,26 @@ In a second terminal, from the repository root:
 
 ```powershell
 cd frontend
-npm install
+npm ci
 npm run dev
 ```
 
-Vite prints the local address for the frontend. At this stage, the frontend
-and backend run separately and are not connected yet.
+Open the local address printed by Vite. The development server forwards
+`/api` requests to `http://localhost:5146` by default. If the backend runs
+at a different address, set the proxy target in the frontend terminal before
+starting Vite:
+
+```powershell
+$env:CLOCKIN_API_TARGET = "http://localhost:5147"
+npm run dev
+```
+
+The variable configures the development server. A deployed frontend build
+expects its host to route same-origin `/api` requests to ClockIn.Api.
+
+Select a seeded employee to see their attendance and available actions.
+Employee selection does not verify identity. Attendance times display in
+`Europe/Zurich` with the local date.
+
+From `frontend`, run `npm test` for the frontend suite, `npm run lint`
+for lint checks, and `npm run build` for TypeScript and the production build.
