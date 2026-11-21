@@ -1,6 +1,6 @@
 # ClockIn — Coding Standards and Workflow
 
-This document defines development practice. `CLAUDE.md` is the single AI instruction entry point; it refers to this document. Product behavior belongs in work plans and `DECISIONS.md`.
+This document defines development practice. `AGENTS.md` is the single AI instruction entry point; it refers to this document. Product behavior belongs in work plans and `DECISIONS.md`.
 
 ## Boundaries for AI assistance
 
@@ -47,5 +47,5 @@ This document defines development practice. `CLAUDE.md` is the single AI instruc
 
 - `README.md` explains setup and local run, including database setup.
 - `DECISIONS.md` captures consequential choices, alternatives, edge cases, deferred work, and known limitations.
-- `CLAUDE.md` is the only AI instruction entry point. Keep substantive standards here and link them from `CLAUDE.md`; do not create a duplicate `AGENTS.md`.
+- `AGENTS.md` is the only AI instruction entry point. Keep substantive standards here and link them from `AGENTS.md`; do not create a duplicate `AGENTS.md`.
 - Document the actual development process and tool contributions honestly.
