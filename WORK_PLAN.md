@@ -1,7 +1,7 @@
 # ClockIn — Working Plan
 
 Updated: 21 November 2026
-Status: **Subtask 1 complete; Subtask 2 in code review; Subtasks 3–6 planned**. This is the shared progress record, not a Codex implementation prompt.
+**Subtasks 1–3 complete, and Subtasks 4–6 planned.** This is the shared progress record.
 
 ## Story — Clock employees in and out with reliable time
 
@@ -23,8 +23,8 @@ Build a small attendance flow in which a selected employee can clock in, clock o
 | #   | Subtask                                           | Deliverable                                                           | Depends on                      | Status      |
 | --- | ------------------------------------------------- | --------------------------------------------------------------------- | ------------------------------- | ----------- |
 | 1   | DB - Create attendance schema and local SQL setup | EF Core model/migration and reproducible SQL Server                   | Approved schema                 | Done        |
-| 2   | BE - Read authoritative Zurich time               | External time client and validation                                   | Approved time-provider contract | Code review |
-| 3   | BE - Implement attendance operations              | EF Core reads/writes, state transitions, concurrency, failed attempts | 1, 2                            | Planned     |
+| 2   | BE - Read authoritative Zurich time               | External time client and validation                                   | Approved time-provider contract | Done        |
+| 3   | BE - Implement attendance operations              | EF Core reads/writes, state transitions, concurrency, failed attempts | 1, 2                            | Done        |
 | 4   | BE - Expose attendance API                        | Employee and attendance endpoints                                     | 3                               | Planned     |
 | 5   | FE - Build employee attendance screen             | Selection, shift state, actions, feedback                             | 4                               | Planned     |
 | 6   | Repo - Document and verify local run              | README and final decisions, fresh-start check                         | 1–5                             | Planned     |
@@ -86,7 +86,7 @@ The client requests `Europe/Zurich`, returns a validated instant for successful 
 - Added focused controlled-HTTP tests for valid winter/summer responses, wrong zone, malformed/inconsistent responses, provider failure, and timeout.
 - Added startup validation for an absolute HTTPS provider URL and a positive, finite timeout up to 2,147,483,647 milliseconds. Tests cover these limits and verify the configured timeout and disabled redirects through the production DI registration.
 - Added regression coverage for date-less timestamps and fractions longer than seven digits. All 32 backend tests passed, and the backend solution built with no warnings or errors.
-- Two complete-diff review iterations were performed, followed by a final review of the post-review fixes. No confirmed defects or open product questions remain. A real elapsed-time timeout and caller-cancellation test remain unverified. Subtask 2 is in Code review pending the user's inspection and approval.
+- Two complete-diff review iterations were performed, followed by a final review of the post-review fixes. A real elapsed-time timeout and caller-cancellation test remain unverified. The developer approved Subtask 2, committed it as `df064be`, and pushed it.
 
 ### Agreed contract and configuration
 
@@ -100,7 +100,7 @@ Implement the employee attendance rules using EF Core and the authoritative time
 
 ### Expected Result
 
-Clock In, Clock Out, and “I forgot to clock out” make only valid state transitions. Database transactions and the unique active-shift rule resolve concurrent requests safely. A time-service failure leaves shifts untouched and, when SQL Server is available, saves a separate failed-attempt record with a reference ID and non-authoritative diagnostic metadata.
+Clock In, Clock Out, and “I forgot to clock out” make only valid state transitions. Atomic SQL Server writes and the unique active-shift rule resolve concurrent requests safely; external time calls run outside those writes. A time-service failure leaves shifts untouched and, for a non-canceled request, the service attempts a separate diagnostic write and returns a reference ID only when that write succeeds.
 
 ### Implementation
 
@@ -113,7 +113,14 @@ Clock In, Clock Out, and “I forgot to clock out” make only valid state trans
 - Use SQL Server-backed tests for concurrent Clock In and repeated/concurrent Clock Out; verify one effective state change.
 - Verify that a failed time call leaves shift data unchanged and creates an attempt record when the database is available.
 
-Prerequisite: Approve the exact operation semantics and persistence pattern.
+### Progress record
+
+- Implemented a scoped attendance service for reading the current open shift and missing clock-outs and performing the three attendance actions. Results distinguish an unknown employee, an invalid transition, a competing action, and an unavailable time provider.
+- Clock In uses the existing filtered unique index to resolve competing inserts. Both closing actions use a single conditional update against the original open shift. Each database write is atomic, and all time-provider calls run outside the writes.
+- Confirmed all 43 backend test cases pass with the local SQL Server 2022 instance, including 11 attendance integration cases. They cover overnight shifts, rejected transitions, competing and repeated punches, a delayed Clock Out after replacement, and provider failures with and without a saved diagnostic reference. The diagnostic write failure was simulated. The backend build had zero warnings and errors. Without SQL Server test configuration, 32 tests passed and eight integration test entries were reported skipped, including two parameterized entries.
+- Fixed the first review finding by detaching the Clock In shift after every save attempt, including when an unexpected save exception propagates. The regression test reproduced an unintended shift insert before the fix and confirmed afterward that a later time-provider failure on the same context writes only its diagnostic record. All 44 backend test cases passed against local SQL Server after the fix, and the build had zero warnings and errors.
+- Fixed diagnostic connection acquisition after a provider failure. A simulated connection acquisition exception reproduced the failure before the fix. Afterward the service returned the provider failure code without a reference, detached the unsaved attempt, and left the open shift untouched. All 45 backend test cases passed against local SQL Server, and the build had zero warnings and errors.
+- Two complete-diff review iterations found no remaining confirmed defects. Caller cancellation during diagnostic persistence is an accepted limitation: the write is canceled with the request and is not guaranteed to persist. No separate reused-context issue remains identified. The developer approved Subtask 3 after independent review; no commit or push is recorded here.
 
 ## Subtask 4 — BE - Expose attendance API
 
@@ -179,7 +186,6 @@ The root README explains prerequisites, Docker Compose startup, migration/applic
 
 ## Decisions still open for later subtasks
 
-- Exact attendance operation semantics and persistence pattern.
 - API endpoint paths and response shapes.
 - Attendance screen behavior and the warning threshold for unusually long open shifts.
 

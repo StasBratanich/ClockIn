@@ -1,4 +1,5 @@
 using ClockIn.Api.Data;
+using ClockIn.Api.Services.Attendance;
 using ClockIn.Api.Services.Time;
 using Microsoft.EntityFrameworkCore;
 
@@ -16,6 +17,7 @@ if (string.IsNullOrWhiteSpace(connectionString))
 
 builder.Services.AddDbContext<ClockInDbContext>(options => options.UseSqlServer(connectionString));
 builder.Services.AddAuthoritativeTime(builder.Configuration);
+builder.Services.AddScoped<AttendanceService>();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 

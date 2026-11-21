@@ -7,7 +7,8 @@ Employee attendance system under development.
 - `backend/ClockIn.Api` — ASP.NET Core Web API (.NET 10)
 - `frontend` — React and TypeScript with Vite
 
-The attendance database schema and local SQL Server setup are implemented. Attendance operations and the UI are still under development.
+The backend includes the attendance schema, Zurich time client, and services for Clock In,
+Clock Out, and marking a missing clock-out. The attendance HTTP endpoints and UI are planned.
 
 ## Prerequisites
 
@@ -60,6 +61,21 @@ dotnet run
 ```
 
 The API prints its local address in the terminal. With the current default launch profile, it runs at http://localhost:5146
+
+## Run backend tests
+
+From the repository root, run the following with the local SQL Server running.
+Use a SQL Server login that can create and drop the disposable test database.
+
+```powershell
+$env:CLOCKIN_TEST_SQLSERVER = "Server=localhost,14333;User Id=sa;Password=<the-password-from-.env>;TrustServerCertificate=True;Encrypt=False"
+dotnet test backend/backend.slnx
+```
+
+The attendance integration tests create a uniquely named database, apply the migration,
+and drop that database after the suite. They use controlled time-client responses.
+Without `CLOCKIN_TEST_SQLSERVER`, the test runner reports the SQL Server tests as skipped.
+A configured connection that fails causes the SQL Server tests to fail.
 
 ## Run the frontend
 

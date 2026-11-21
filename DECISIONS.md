@@ -1,6 +1,6 @@
 # ClockIn — Decisions
 
-Status: Subtask 1 completed. This document records agreed product and architecture decisions. Later attendance features remain unimplemented; implementation progress is tracked in WORK_PLAN.md.
+This document records agreed product and architecture decisions. Implementation progress is tracked in WORK_PLAN.md.
 
 ## Scope and delivery
 
@@ -26,7 +26,7 @@ For the first migration, `Shifts` has `Id` (`int IDENTITY`), `EmployeeId` (`int`
 
 ### Concurrent requests and database enforcement
 
-Clock actions will use database transactions. A unique filtered index on `Shifts.EmployeeId` where `Status=Open` independently enforces at most one active shift per employee. Two concurrent Clock In requests cannot create two active shifts: only one should succeed, and the other receives a clear conflict response. A concurrent or repeated Clock Out must likewise not close the same shift twice. The conditional write pattern belongs to the later attendance-service Subtask. Foreign keys to `Employees` do not cascade-delete attendance history.
+The attendance service uses an atomic SQL Server write for each successful transition; it does not hold an explicit database transaction open while calling the external provider. Clock In checks for an existing open shift before requesting time. The unique filtered index on `Shifts.EmployeeId` where `Status=Open` resolves insert races and the service returns a conflict if another insert wins. Clock Out and the missing clock-out action both update the specific shift they read, conditional on that shift still being open. If a competing action has already closed or marked it, the update affects zero rows and the service reports that the open shift changed. A delayed Clock Out therefore cannot close a replacement shift. A provider instant at or before the clock-in time is rejected, as required by the schema. All provider calls finish before writes begin. Foreign keys to `Employees` do not cascade-delete attendance history.
 
 ### Authoritative time
 
@@ -38,9 +38,11 @@ The MVP has one fixed business time zone: `Europe/Zurich`. The backend converts 
 
 ### Failed time-service attempts
 
-If the external time service fails during Clock In or Clock Out, no successful punch is recorded and no shift is opened or closed. If SQL Server is available, the backend will save a separate failed-attempt record containing the employee, requested action, failure reason, and a reference ID shown to the user. A server-observed request time may be kept there **only as diagnostic metadata**, clearly labelled non-authoritative. It must never be used as a Clock In/Out time or automatically converted into one. A failed-attempt record supports later investigation; it does not establish when work began or ended. If the database is also unavailable, the application cannot guarantee that the failed attempt was saved.
+If the external time service fails during Clock In or Clock Out, no successful punch is recorded and no shift is opened or closed. For a non-canceled request, the backend attempts to save a separate failed-attempt record containing the employee, requested action, failure reason, and diagnostic metadata, and returns a reference ID only when that write succeeds. A server-observed request time may be kept there **only as diagnostic metadata**, clearly labelled non-authoritative. It must never be used as a Clock In/Out time or automatically converted into one. A failed-attempt record supports later investigation; it does not establish when work began or ended. If the database is also unavailable, the application cannot guarantee that the failed attempt was saved.
 
 `FailedPunchAttempts` has `Id` (`int IDENTITY`, the reference ID), `EmployeeId` (`int`, required FK), `Action` (`tinyint`, `1=In` or `2=Out`, checked in the database), `FailureCode` (`varchar(32)`, required), and `ReceivedAtServerUtc` (`datetimeoffset`, required diagnostic metadata only). `ReceivedAtServerUtc` records when the server observed the failed request; it is never an authoritative attendance timestamp and must not be used to create, backdate, or infer a Clock In or Clock Out. The backend will map provider errors to its own stable codes, such as `TIMEOUT`, `PROVIDER_UNAVAILABLE`, and `INVALID_RESPONSE`, instead of storing raw provider messages. The first migration does not need a fixed SQL check list of those codes before the provider behavior is selected. Foreign keys do not cascade-delete failed attempts.
+
+The attendance service writes `TIMEOUT`, `PROVIDER_UNAVAILABLE`, or `INVALID_RESPONSE` in a separate database write and returns the saved reference ID on success. If that write fails, the service still returns the time failure code with no reference ID. A caller cancellation cancels the diagnostic write with the request; persistence of that diagnostic is not guaranteed, and the service does not continue it independently of the canceled request. Requests rejected during employee or shift validation never call the provider.
 
 ## Outside the first deliverable and known limits
 
