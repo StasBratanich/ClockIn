@@ -30,7 +30,9 @@ Clock actions will use database transactions. A unique filtered index on `Shifts
 
 ### Authoritative time
 
-Every successful Clock In and Clock Out must use time obtained by the backend from an external time API for `Europe/Zurich`. Neither the browser clock nor the server's local clock is a substitute for an attendance timestamp. Store the validated instant as UTC in SQL Server `datetimeoffset` columns, preserving the provider's available precision; show `HH:mm` in Zurich time in the UI without rounding away the stored instant. The initial implementation will use one external provider; the provider, response validation, and exact timeout policy are decided in the time-client Subtask. The UI will offer a retry when time retrieval fails. A later successful attempt records the time obtained then; it does not silently backdate the punch.
+Every successful Clock In and Clock Out must use time obtained by the backend from the configured provider for `Europe/Zurich`. `AuthoritativeTime:ProviderUrl` defaults to `https://worldtime.timezone.io/api/timezone/Europe/Zurich` and must be an absolute HTTPS URL. `AuthoritativeTime:Timeout` defaults to five seconds and must be positive and at most 2,147,483,647 milliseconds. The client does not cache times or fall back to another provider, and neither the browser clock nor the server's local clock is a substitute for an attendance timestamp.
+
+A successful response must report `timezone == "Europe/Zurich"`, include valid `datetime`, `utc_datetime`, and `utc_offset` fields, and give a local offset that matches the reported offset. Both timestamps must represent the same instant and use complete ISO 8601 date-times with explicit offsets and at most seven fractional-second digits. Store the validated instant as UTC in SQL Server `datetimeoffset` columns, preserving the accepted precision, and show `HH:mm` in Zurich time in the UI. The UI will offer a retry when time retrieval fails. A later successful attempt records the time obtained then.
 
 The MVP has one fixed business time zone: `Europe/Zurich`. The backend converts each validated provider instant to UTC for storage, and the UI displays attendance in Zurich time. There is no per-employee or per-shift time-zone column in the MVP. Supporting multiple regions later would require a time-zone identifier for selecting the external time request and interpreting local dates and display; the stored UTC instants remain valid.
 
@@ -49,4 +51,4 @@ If the external time service fails during Clock In or Clock Out, no successful p
 
 ## Open decisions for upcoming subtasks
 
-The unusually long shift warning threshold; the external time provider, validation, and timeout; API paths and responses; and exact UI behavior. These are later-Subtask design questions, not decisions already approved.
+The unusually long shift warning threshold; API paths and responses; and exact UI behavior. These are later-Subtask design questions, not decisions already approved.
