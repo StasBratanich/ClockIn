@@ -6,7 +6,14 @@ This document records agreed product and architecture decisions. Implementation 
 
 ClockIn is a small employee attendance system built with ASP.NET Core (.NET 10), React with TypeScript, and SQL Server. The first deliverable focuses on a reliable clock-in/clock-out flow and a few meaningful exceptions rather than a broad workforce-management product.
 
-The local SQL Server setup uses Docker Compose so someone cloning the repository can run it without the developer's existing local SQL Server installation. The Compose service runs SQL Server 2022, maps host port 14333 to container port 1433 to avoid the developer's local instance, and uses a named data volume. A local, ignored `.env` supplies the SQL Server password; an example file shows the required setting. The canonical API connection key is `ConnectionStrings:ClockIn`, supplied through development user secrets or the standard `ConnectionStrings__ClockIn` environment-variable form, not a checked-in password. Apply EF Core migrations explicitly with `dotnet ef database update` after SQL Server starts; the API does not run migrations automatically on startup.
+The local SQL Server setup uses one tracked Docker Compose file. It runs SQL Server 2022, publishes on `127.0.0.1:14333` by default, and stores data in a named volume. The Quick Start helper uses the password from the ignored `.env`, waits for SQL Server, and supplies the canonical API connection key `ConnectionStrings:ClockIn` through `ConnectionStrings__ClockIn` in the current PowerShell process. It keeps an existing container and rejects a mismatched port binding. The default database is `ClockInDemo` so subsequent runs preserve attendance. A separate database name is available for a fresh demo. Apply EF Core migrations explicitly with `dotnet ef database update` after SQL Server starts.
+
+The Quick Start helper clears existing ClockIn connection environment overrides
+before validation and exports a new value only after Compose health and the
+in-container login succeed. It checks the active Docker endpoint and pins its
+Docker commands to a local named pipe or Unix socket. Confirm the helper's
+printed target against EF's reported server and database before applying a
+migration.
 
 ## Agreed decisions
 
@@ -42,7 +49,7 @@ If the external time service fails during Clock In or Clock Out, no successful p
 
 `FailedPunchAttempts` has `Id` (`int IDENTITY`, the reference ID), `EmployeeId` (`int`, required FK), `Action` (`tinyint`, `1=In` or `2=Out`, checked in the database), `FailureCode` (`varchar(32)`, required), and `ReceivedAtServerUtc` (`datetimeoffset`, required diagnostic metadata only). `ReceivedAtServerUtc` records when the server observed the failed request; it is never an authoritative attendance timestamp and must not be used to create, backdate, or infer a Clock In or Clock Out. The backend will map provider errors to its own stable codes, such as `TIMEOUT`, `PROVIDER_UNAVAILABLE`, and `INVALID_RESPONSE`, instead of storing raw provider messages. The first migration does not need a fixed SQL check list of those codes before the provider behavior is selected. Foreign keys do not cascade-delete failed attempts.
 
-The attendance service writes `TIMEOUT`, `PROVIDER_UNAVAILABLE`, or `INVALID_RESPONSE` in a separate database write and returns the saved reference ID on success. If that write fails, the service still returns the time failure code with no reference ID. A caller cancellation cancels the diagnostic write with the request; persistence of that diagnostic is not guaranteed, and the service does not continue it independently of the canceled request. Requests rejected during employee or shift validation never call the provider.
+The attendance service writes `TIMEOUT`, `PROVIDER_UNAVAILABLE`, or `INVALID_RESPONSE` in a separate database write and returns the saved reference ID on success. If that write fails, the service still returns the time failure code with no reference ID. A caller cancellation cancels the diagnostic write with the request; persistence of that diagnostic is not guaranteed, and the service does not continue it independently of the canceled request. Requests rejected during employee or shift validation never call the provider. A successful retry creates a new punch from the new provider response and leaves the diagnostic row available for investigation. The attendance screen exposes the reference in the error and has no diagnostic history view.
 
 ### Attendance HTTP API
 
@@ -72,6 +79,8 @@ A 503 includes a numeric `failedAttemptReferenceId` extension only if the servic
 
 The responsive screen loads the employee list from the API and uses an explicit selection to load attendance. It shows the selected employee's open shift and shifts missing a clock-out. With no open shift the available action is Clock In. With an open shift the available actions are Clock Out and “I forgot to clock out,” which requires a separate confirmation. Missing clock-outs show the stored clock-in date and time. All punch times display with their local date and 24-hour time in `Europe/Zurich`.
 
+Completed shifts are persisted in SQL Server. The screen confirms Clock Out after the action and provides no completed-shift history view.
+
 The browser clock determines whether more than 12 hours have elapsed since the stored clock-in instant. The warning is informational and can be affected by an inaccurate device clock. Punch timestamps always come from the API.
 
 The screen shows request progress, success, conflicts, and errors. A recognized time-provider failure displays its stable code and the failed-attempt reference when supplied. Retry sends a fresh punch request only when clicked. The frontend validates successful response bodies and gives each request 15 seconds, including reading its body. After successful actions, conflicts, or uncertain outcomes such as a timeout or an invalid punch response, the screen reads attendance once. A failed read leaves actions unavailable until the user can load attendance with Refresh attendance. A punch and its reconciliation read lock the controls against concurrent submission or selection changes. Attendance reads for a prior selection cannot replace the current selection's state. The API accepts the employee ID for closing actions, so a shift can still change on another client between the displayed read and a new action request.
@@ -82,7 +91,7 @@ Successful Clock Out responses must contain a valid exit instant strictly later 
 
 ## Outside the first deliverable and known limits
 
-- No manual creation or correction of attendance times, manager approval, payroll integration, notifications, or full audit trail. A missing clock-out and a failed attempt remain visible as unresolved exceptions; the MVP cannot determine their actual work times. We may reconsider one focused correction feature after the core flow is working, but it is not part of the current scope.
+- No manual creation or correction of attendance times, manager approval, payroll integration, notifications, or full audit trail. Missing clock-outs and diagnostic records persist for investigation. Actual work times for those exceptions remain unknown.
 - No authentication: any user of the app may select an employee. This is a deliberate home-assignment simplification and is unsuitable for trusted payroll records.
 - No automatic offline punch using a device or server clock. When the time API is unavailable, the user can retry, and the failed attempt may be logged separately; attendance is not fabricated.
 - No dedicated idempotency-key protocol initially. State checks and database constraints protect against duplicate active shifts and duplicate closures, but a lost HTTP response may still require the client to refresh the employee's state to learn whether a punch succeeded.

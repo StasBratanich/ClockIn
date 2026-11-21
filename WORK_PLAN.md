@@ -1,7 +1,7 @@
 # ClockIn — Working Plan
 
-Updated: 21 November 2026
-**Subtasks 1–5 complete, and Subtask 6 planned.** This is the shared progress record.
+Updated: 22 November 2026
+**Subtasks 1–5 complete, and Subtask 6 in code review.** This is the shared progress record.
 
 ## Story — Clock employees in and out with reliable time
 
@@ -27,7 +27,7 @@ Build a small attendance flow in which a selected employee can clock in, clock o
 | 3   | BE - Implement attendance operations              | EF Core reads/writes, state transitions, concurrency, failed attempts | 1, 2                            | Done        |
 | 4   | BE - Expose attendance API                        | Employee and attendance endpoints                                     | 3                               | Done        |
 | 5   | FE - Build employee attendance screen             | Selection, shift state, actions, feedback                             | 4                               | Done        |
-| 6   | Repo - Document and verify local run              | README and final decisions, fresh-start check                         | 1–5                             | Planned     |
+| 6   | Repo - Document and verify local run              | README and final decisions, fresh-start check                         | 1–5                             | Code review |
 
 Each Subtask includes its own tests. No separate testing Subtask is planned.
 
@@ -200,6 +200,39 @@ The root README explains prerequisites, Docker Compose startup, migration/applic
 ### Tests
 
 - Confirm the documented startup and a Clock In → Clock Out flow against SQL Server, plus the two exception paths.
+
+### Progress record — 21 November 2026
+
+- Updated the README with SQL readiness, explicit migration and HTTP launch steps, an isolated connection option, and a manual demo. Recorded the limits of completed-shift history and failed-attempt diagnostics in DECISIONS.md. Application code and dependencies were unchanged.
+- `docker compose up -d sqlserver` confirmed the existing SQL Server 2022 service was running with its `0.0.0.0:14333` host binding, and its logs confirmed readiness. In `master`, `SELECT DB_ID(N'ClockInSubtask6_c4e283b4fbcd4fc083087e23842df326')` returned NULL before `dotnet ef database update` applied `20261119140652_InitialAttendanceSchema` using the temporary `ConnectionStrings__ClockIn` override. The browser run started with three seeded employees and empty shift and diagnostic tables. The earlier harness attempt used another verified-empty database, `ClockInSubtask6_9f69d86a7c2e4c54a645cd02d67aa7a1`, and stopped on a test assertion that rejected SQL Server's UTC JSON representation. Both isolated databases were retained.
+- The tracked Compose file now configures SQL Server on `127.0.0.1:14333`, and the README uses that single file. Docker Compose v5.7.0 resolved the same TCP mapping and named data volume with `.env.example` from the repository root and with the local `.env` from both the root and `backend/ClockIn.Api`. The isolated Quick Start follow-up below covers first startup on a separate port. The existing container, volume, and data were preserved.
+- `dotnet build backend/backend.slnx` passed with zero warnings and errors. `dotnet test backend/backend.slnx` passed all 63 tests with none skipped. `CLOCKIN_TEST_SQLSERVER` enabled the suites that create and clean up their own disposable databases. The automated backend tests used controlled time responses.
+- From `frontend`, `npm ci`, `npm test` (38 tests in three files), `npm run lint`, and `npm run build` passed. `npm ci` and `npm audit --json` reported two moderate dependency findings in `eslint-plugin-jsx-a11y-x` and `minimatch`. Dependency updates are outside this subtask.
+- Ran the API with `dotnet run --no-build --launch-profile http` and Vite with `npm run dev -- --host 127.0.0.1 --strictPort` using its default proxy. A temporary script run with `node (Join-Path $clockInEvidence 'verify-clockin.cjs')` used headless Chrome 158.0.8127.36 and Playwright Core 1.65.1. It drove the real browser through Vite, the API, and isolated SQL Server. Provider-call logs showed four HTTP 200 responses from the default Zurich provider before the failure test and one after it.
+- For employee 1001, Clock In and Clock Out succeeded. Read-only SQL queries confirmed zero UTC offsets and exact agreement with the API timestamps at stored precision. Chrome used `America/Los_Angeles` while the UI rendered the instants in `Europe/Zurich`. For 1002, canceling the missing clock-out confirmation sent no POST. Confirming yielded `MissingClockOut` with a NULL exit, showed only the entry time in the UI, and allowed a distinct new shift while preserving the old one.
+- For employee 1003, the API's temporary `AuthoritativeTime__ProviderUrl` override used an unused loopback port. The resulting connection refusal returned HTTP 503 with `PROVIDER_UNAVAILABLE`. SQL showed identical shift rows before and after the failure, and the UI reference matched diagnostic row 1. The API was restarted with the default provider. Clicking Retry in the same page sent one new POST and saved a fresh live Zurich instant after the diagnostic timestamp. The diagnostic row was retained.
+- Captured eight screenshots at 1440×900 and 390×844 browser viewports, including both confirmation and error states at both widths. Checked horizontal overflow and inspected the four confirmation and error screenshots. Results, screenshots, API logs, and the temporary harness are local under `%TEMP%\ClockIn-Subtask6-9f69d86a`. Physical mobile devices were not tested. Developer review is pending.
+
+### Quick Start follow-up — 21 November 2026
+
+- The primary README flow uses a guarded `.env` copy, the PowerShell helper, an explicit EF migration, and a stable `ClockInDemo` database. The GUID database and SQL troubleshooting are under Advanced.
+- Copied tracked source plus the new helper to `%TEMP%\clockin-quickstart-7486ea28`. The copy used its own `.env`, user-secrets paths, dependencies, and build outputs. The developer's SQL Server resources were never used. A guarded copy from `.env.example` left the existing temp `.env` byte-for-byte intact when repeated. The helper rejected missing and placeholder passwords, decoded a password containing a dollar sign, semicolon, and apostrophe, and replaced inherited ClockIn connection settings. On the isolated container it rejected a mismatched port before starting or recreating anything.
+- In the copy, an earlier version of `.\Start-ClockInDatabase.ps1 -SqlPort 15433` used Compose project `clockin-quickstart-7486ea28`, container `clockin-quickstart-7486ea28-sqlserver-1`, and new volume `clockin-quickstart-7486ea28_clockin-sqlserver-data`. The initial run created the container and reached Healthy. A follow-up fixed Compose's rendered JSON dollar escaping before migration. `docker compose -p clockin-quickstart-7486ea28 --env-file .env -f docker-compose.yml port sqlserver 1433` returned `127.0.0.1:15433`. With the port override unset, `docker compose --env-file .env -f docker-compose.yml config --format json` resolved `127.0.0.1:14333` to container port 1433.
+- From `backend/ClockIn.Api`, `dotnet restore` passed, `dotnet ef dbcontext info` reported `ClockInDemo` on `127.0.0.1,15433`, and `dotnet ef database update` applied `20261119140652_InitialAttendanceSchema`. The migration contains exactly the three employee seed rows. Ran `dotnet run --launch-profile http -- --urls http://127.0.0.1:15146`. From `frontend`, ran `npm ci`, set `$env:CLOCKIN_API_TARGET = 'http://127.0.0.1:15146'`, and ran `npm run dev -- --host 127.0.0.1 --port 15173 --strictPort`.
+- Through Vite at `http://127.0.0.1:15173`, the page returned HTTP 200, `GET /api/employees` returned exactly 1001, 1002, and 1003, and `GET /api/employees/1/attendance` showed fresh attendance. `POST /api/employees/1/attendance/clock-in` opened shift 1 using the live Zurich provider, which returned HTTP 200. Stopped the API and ran `docker compose -p clockin-quickstart-7486ea28 --env-file .env -f docker-compose.yml stop sqlserver`, then reran the helper and API. Repeated GET requests confirmed identical employee records and the same open shift ID and timestamp. Compose reported the same container ID. The temporary copy contains `before-restart.json` and `after-restart.json`. The isolated API, Vite, and SQL Server were stopped after verification. The isolated volume was retained.
+- In the isolated copy, `dotnet build backend/backend.slnx` passed with zero warnings and errors and `dotnet test backend/backend.slnx` passed all 63 tests with `CLOCKIN_TEST_SQLSERVER` pointed at the isolated server. From `frontend`, `npm ci`, `npm test` (38 passed), `npm run lint`, and `npm run build` passed. npm reported two moderate dependency findings. PowerShell parsing and `git diff --check` passed. This follow-up used HTTP through Vite for acceptance. Manual UI acceptance on the developer environment remains for developer review.
+
+### Helper hardening review follow-up — 22 November 2026
+
+- The helper now validates the database name before calling Docker, captures Compose configuration as UTF-8, and requires a successful login using the `.env` password before exporting the API connection.
+- PowerShell parsing reported zero errors. Static checks covered validation order, no-recreate startup, the login timeout and credential forwarding, and UTF-8 capture. Eight invalid database arguments were rejected. An offline Compose configuration check preserved a synthetic UTF-8 password with punctuation and whitespace, resolved the expected loopback binding, and returned sanitized failures for missing, placeholder, and malformed password entries.
+- The isolated first-start evidence above applies to the earlier helper. First startup with an empty volume and a live credential mismatch remain unverified for the final helper. Subtask 6 remains in Code review.
+
+### Migration target review follow-up — 22 November 2026
+
+- Clear inherited ClockIn connection environment overrides before validation. Export the replacement only after the health and login checks succeed. Inspect the active Docker context before Compose runs, reject endpoints other than local named pipes and Unix sockets, and pin subsequent commands to the inspected endpoint. Quick Start requires a successful helper run and matching helper and EF targets before migration.
+- Windows PowerShell parsed the helper and all 10 README PowerShell blocks. Static checks covered endpoint pinning, migration step order, no-recreate startup, and login credential handling and timeout. An in-memory run with Docker calls stubbed covered 13 failure cases and both accepted local endpoint types. The failure cases left the prior connection overrides absent.
+- Live Docker startup, the host loopback connection, and first startup with an empty volume remain unverified for this revision. The earlier isolated evidence still applies to the earlier helper. Subtask 6 remains in Code review.
 
 ## Progress and review protocol
 
