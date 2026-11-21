@@ -1,7 +1,7 @@
 # ClockIn — Working Plan
 
 Updated: 21 November 2026
-**Subtasks 1–3 complete, and Subtasks 4–6 planned.** This is the shared progress record.
+**Subtasks 1–4 complete, and Subtasks 5–6 planned.** This is the shared progress record.
 
 ## Story — Clock employees in and out with reliable time
 
@@ -25,7 +25,7 @@ Build a small attendance flow in which a selected employee can clock in, clock o
 | 1   | DB - Create attendance schema and local SQL setup | EF Core model/migration and reproducible SQL Server                   | Approved schema                 | Done        |
 | 2   | BE - Read authoritative Zurich time               | External time client and validation                                   | Approved time-provider contract | Done        |
 | 3   | BE - Implement attendance operations              | EF Core reads/writes, state transitions, concurrency, failed attempts | 1, 2                            | Done        |
-| 4   | BE - Expose attendance API                        | Employee and attendance endpoints                                     | 3                               | Planned     |
+| 4   | BE - Expose attendance API                        | Employee and attendance endpoints                                     | 3                               | Done        |
 | 5   | FE - Build employee attendance screen             | Selection, shift state, actions, feedback                             | 4                               | Planned     |
 | 6   | Repo - Document and verify local run              | README and final decisions, fresh-start check                         | 1–5                             | Planned     |
 
@@ -134,14 +134,21 @@ The frontend can list/select employees, load an employee's active and relevant i
 
 ### Implementation
 
-1. Add new controller endpoints and request/response DTOs in `backend/ClockIn.Api`; call the attendance service rather than putting shift rules in the controller.
-2. Map operation results to agreed HTTP responses and configure local frontend-to-API access as needed.
+1. Add employee and attendance endpoints with response DTOs in `backend/ClockIn.Api`. Delegate attendance reads and actions to the attendance service.
+2. Map operation results to the agreed HTTP responses. Frontend-to-API wiring belongs to Subtask 5.
 
 ### Tests
 
 - Exercise the success and key failure responses through the API, including a failed-attempt reference.
 
-Prerequisite: Agree on endpoint paths and response shapes.
+### Progress record
+
+- Implemented the approved employee list, attendance state, and three bodyless action routes. Recorded the response fields and stable ProblemDetails codes in [DECISIONS.md](DECISIONS.md#attendance-http-api).
+- Added SQL Server-backed HTTP tests for employee listing, state, all successful actions, unknown employees, each conflict, both diagnostic persistence outcomes, and a sanitized 500 for an unexpected database failure.
+- Built the backend solution with zero warnings and errors. All 54 test cases passed against local SQL Server 2022, including nine HTTP cases. Without SQL Server configuration, 32 tests passed and 18 integration entries were skipped. The HTTP tests used controlled time responses and simulated database write failures.
+- Applied the first review's fixes for empty attendance routing errors, employee-number ordering coverage, and an invalid time response during Clock Out. The build finished with zero warnings and errors. All 60 tests passed against local SQL Server 2022, including 15 HTTP cases. Without SQL Server configuration, 32 passed and 22 integration entries were skipped.
+- Applied the second review's fixes. Invalid IDs take precedence over unsupported methods, and an HTTP test verifies that a database read failure returns a sanitized 500. The build finished with zero warnings and errors. All 63 tests passed against local SQL Server 2022, including 18 HTTP cases. Without SQL Server configuration, 32 passed and 24 integration entries were skipped.
+- The independent reviewer found no actionable findings after the final fixes and did not rerun the build or SQL Server suite. The developer approved Subtask 4 after independent review; no commit or push is recorded here.
 
 ## Subtask 5 — FE - Build employee attendance screen
 
@@ -186,7 +193,6 @@ The root README explains prerequisites, Docker Compose startup, migration/applic
 
 ## Decisions still open for later subtasks
 
-- API endpoint paths and response shapes.
 - Attendance screen behavior and the warning threshold for unusually long open shifts.
 
 ## Progress and review protocol

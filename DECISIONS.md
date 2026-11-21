@@ -44,6 +44,30 @@ If the external time service fails during Clock In or Clock Out, no successful p
 
 The attendance service writes `TIMEOUT`, `PROVIDER_UNAVAILABLE`, or `INVALID_RESPONSE` in a separate database write and returns the saved reference ID on success. If that write fails, the service still returns the time failure code with no reference ID. A caller cancellation cancels the diagnostic write with the request; persistence of that diagnostic is not guaranteed, and the service does not continue it independently of the canceled request. Requests rejected during employee or shift validation never call the provider.
 
+### Attendance HTTP API
+
+| Request | Successful response |
+| --- | --- |
+| `GET /api/employees` | 200 and an array of `id`, `employeeNumber`, and `fullName` objects, ordered by employee number |
+| `GET /api/employees/{id}/attendance` | 200 and an object containing nullable `openShift` and the `missingClockOutShifts` array |
+| `POST /api/employees/{id}/attendance/clock-in` | 200 and the resulting shift |
+| `POST /api/employees/{id}/attendance/clock-out` | 200 and the resulting shift |
+| `POST /api/employees/{id}/attendance/missing-clock-out` | 200 and the resulting shift |
+
+The path ID is the employee's internal integer ID. Action requests have no body. A shift response contains `id`, `employeeId`, `clockInAtUtc`, nullable `clockOutAtUtc`, and a string `status` whose value is `Open`, `Completed`, or `MissingClockOut`. Punch timestamps come from the service's stored UTC instants. The attendance state excludes completed shifts.
+
+Errors use ASP.NET Core ProblemDetails with a stable `code` extension.
+
+| HTTP status | Codes |
+| --- | --- |
+| 404 | `EMPLOYEE_NOT_FOUND` for an unknown employee or an ID that cannot be routed as a 32-bit integer, including when the request also uses an unsupported method |
+| 405 | `METHOD_NOT_ALLOWED` for an unsupported method on an attendance state or action route with a valid integer ID, with the supported methods in the `Allow` header |
+| 409 | `OPEN_SHIFT_ALREADY_EXISTS`, `NO_OPEN_SHIFT`, `OPEN_SHIFT_CHANGED`, `CLOCK_OUT_NOT_AFTER_CLOCK_IN` |
+| 503 | `TIMEOUT`, `PROVIDER_UNAVAILABLE`, `INVALID_RESPONSE` |
+| 500 | `INTERNAL_ERROR` for unexpected errors, including database failures during attendance reads or writes |
+
+A 503 includes a numeric `failedAttemptReferenceId` extension only if the service saved the diagnostic. Error responses omit raw provider messages, connection strings, and exception details. Attendance rules remain in the service.
+
 ## Outside the first deliverable and known limits
 
 - No manual creation or correction of attendance times, manager approval, payroll integration, notifications, or full audit trail. A missing clock-out and a failed attempt remain visible as unresolved exceptions; the MVP cannot determine their actual work times. We may reconsider one focused correction feature after the core flow is working, but it is not part of the current scope.
@@ -53,4 +77,4 @@ The attendance service writes `TIMEOUT`, `PROVIDER_UNAVAILABLE`, or `INVALID_RES
 
 ## Open decisions for upcoming subtasks
 
-The unusually long shift warning threshold; API paths and responses; and exact UI behavior. These are later-Subtask design questions, not decisions already approved.
+The unusually long shift warning threshold and exact UI behavior remain open for Subtask 5.

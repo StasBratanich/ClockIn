@@ -7,8 +7,9 @@ Employee attendance system under development.
 - `backend/ClockIn.Api` — ASP.NET Core Web API (.NET 10)
 - `frontend` — React and TypeScript with Vite
 
-The backend includes the attendance schema, Zurich time client, and services for Clock In,
-Clock Out, and marking a missing clock-out. The attendance HTTP endpoints and UI are planned.
+The backend includes the attendance schema, Zurich time client, and HTTP endpoints for
+employee selection, attendance state, Clock In, Clock Out, and marking a missing clock-out.
+The attendance UI is planned.
 
 ## Prerequisites
 
@@ -60,7 +61,12 @@ cd backend/ClockIn.Api
 dotnet run
 ```
 
-The API prints its local address in the terminal. With the current default launch profile, it runs at http://localhost:5146
+The API prints its local address in the terminal. With the current default launch profile, it runs at http://localhost:5146.
+Use `GET /api/employees` to find a seeded employee ID, then `GET /api/employees/{id}/attendance`
+to see that employee's state. The bodyless action requests are in
+[ClockIn.Api.http](backend/ClockIn.Api/ClockIn.Api.http). Clock In and Clock Out use the
+configured Zurich time provider. See [DECISIONS.md](DECISIONS.md#attendance-http-api) for
+response fields and error codes.
 
 ## Run backend tests
 
@@ -72,8 +78,9 @@ $env:CLOCKIN_TEST_SQLSERVER = "Server=localhost,14333;User Id=sa;Password=<the-p
 dotnet test backend/backend.slnx
 ```
 
-The attendance integration tests create a uniquely named database, apply the migration,
-and drop that database after the suite. They use controlled time-client responses.
+The service and HTTP attendance integration suites each create a uniquely named database,
+apply the migration, and drop their database after the suite. Both use controlled time-client
+responses.
 Without `CLOCKIN_TEST_SQLSERVER`, the test runner reports the SQL Server tests as skipped.
 A configured connection that fails causes the SQL Server tests to fail.
 

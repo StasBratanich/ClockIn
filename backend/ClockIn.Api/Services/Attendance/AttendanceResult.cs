@@ -20,3 +20,5 @@ public sealed record AttendanceResult(
     int? FailedAttemptReferenceId = null);
 
 public sealed record AttendanceState(Shift? OpenShift, IReadOnlyList<Shift> MissingClockOutShifts);
+
+public sealed record EmployeeSummary(int Id, string EmployeeNumber, string FullName);

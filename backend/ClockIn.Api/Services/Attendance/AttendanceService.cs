@@ -11,6 +11,12 @@ public sealed class AttendanceService(
     IAuthoritativeTimeClient timeClient,
     ILogger<AttendanceService> logger)
 {
+    public Task<EmployeeSummary[]> ListEmployeesAsync(CancellationToken cancellationToken = default) =>
+        db.Employees.AsNoTracking()
+            .OrderBy(employee => employee.EmployeeNumber)
+            .Select(employee => new EmployeeSummary(employee.Id, employee.EmployeeNumber, employee.FullName))
+            .ToArrayAsync(cancellationToken);
+
     public async Task<AttendanceState?> GetStateAsync(
         int employeeId, CancellationToken cancellationToken = default)
     {
