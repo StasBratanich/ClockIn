@@ -1,7 +1,7 @@
 # ClockIn — Working Plan
 
 Updated: 22 November 2026
-**Subtasks 1–5 complete, and Subtask 6 in code review.** This is the shared progress record.
+**Subtasks 1–6 complete.** This is the shared progress record.
 
 ## Story — Clock employees in and out with reliable time
 
@@ -27,7 +27,7 @@ Build a small attendance flow in which a selected employee can clock in, clock o
 | 3   | BE - Implement attendance operations              | EF Core reads/writes, state transitions, concurrency, failed attempts | 1, 2                            | Done        |
 | 4   | BE - Expose attendance API                        | Employee and attendance endpoints                                     | 3                               | Done        |
 | 5   | FE - Build employee attendance screen             | Selection, shift state, actions, feedback                             | 4                               | Done        |
-| 6   | Repo - Document and verify local run              | README and final decisions, fresh-start check                         | 1–5                             | Code review |
+| 6   | Repo - Document and verify local run              | README and final decisions, fresh-start check                         | 1–5                             | Done        |
 
 Each Subtask includes its own tests. No separate testing Subtask is planned.
 
@@ -233,6 +233,10 @@ The root README explains prerequisites, Docker Compose startup, migration/applic
 - Clear inherited ClockIn connection environment overrides before validation. Export the replacement only after the health and login checks succeed. Inspect the active Docker context before Compose runs, reject endpoints other than local named pipes and Unix sockets, and pin subsequent commands to the inspected endpoint. Quick Start requires a successful helper run and matching helper and EF targets before migration.
 - Windows PowerShell parsed the helper and all 10 README PowerShell blocks. Static checks covered endpoint pinning, migration step order, no-recreate startup, and login credential handling and timeout. An in-memory run with Docker calls stubbed covered 13 failure cases and both accepted local endpoint types. The failure cases left the prior connection overrides absent.
 - Live Docker startup, the host loopback connection, and first startup with an empty volume remain unverified for this revision. The earlier isolated evidence still applies to the earlier helper. Subtask 6 remains in Code review.
+
+### Final acceptance record — 22 November 2026
+
+- The developer manually ran the project from a fresh clone, including SQL Server setup, migration, API startup, and frontend startup, and reported that the site works. The developer approved Subtask 6. No commit, push, or merge is recorded here.
 
 ## Progress and review protocol
 

@@ -1,6 +1,6 @@
 # ClockIn
 
-Employee attendance system under development.
+Employee attendance system.
 
 ## Projects
 
